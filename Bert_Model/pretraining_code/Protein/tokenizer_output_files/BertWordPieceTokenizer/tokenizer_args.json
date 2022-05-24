@@ -1,0 +1,9 @@
+{
+    "lowercase": true,
+    "cls_token": "[CLS]",
+    "pad_token": "[PAD]",
+    "sep_token": "[SEP]",
+    "unk_token": "[UNK]",
+    "mask_token": "[MASK]",
+    "vocab_file": "Protein/tokenizer_output_files/BertWordPieceTokenizer/vocab.txt"
+}
