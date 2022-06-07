@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from captum.attr import DeepLift
 import os
 from tqdm import tqdm
+import torch
 
 
 class CustomDataset(Dataset):
@@ -131,13 +132,29 @@ def batchify(l, batch_size):
 def get_attributions(dl, X_test, y_test, target, absolute=False):
     
     attr_list = []
-    for batch in batchify(X_test, 1_000):
     
-        dl_attr_test = dl.attribute(batch, target=target)
-        # dl_attr_test_sum = dl_attr_test.detach().cpu().numpy().sum(0)
-        # dl_attr_test_norm_sum_0 = dl_attr_test_sum / np.linalg.norm(dl_attr_test_sum, ord=1)
-        dl_attr_test_norm_sum_0=dl_attr_test.detach().cpu().numpy().mean(0)
-        attr_list.append(dl_attr_test_norm_sum_0)
+    if type(target)==list:
+        
+        for batch in batchify(list(zip(X_test, target)), 1_000):
+            
+            x = torch.cat([b[0] for b in batch])
+            y = torch.cat([b[1] for b in batch])
+            
+            dl_attr_test = dl.attribute(x, target=y)
+            # dl_attr_test_sum = dl_attr_test.detach().cpu().numpy().sum(0)
+            # dl_attr_test_norm_sum_0 = dl_attr_test_sum / np.linalg.norm(dl_attr_test_sum, ord=1)
+            dl_attr_test_norm_sum_0=dl_attr_test.detach().cpu().numpy().mean(0)
+            attr_list.append(dl_attr_test_norm_sum_0)
+        
+    else:
+    
+        for batch in batchify(X_test, 1_000):
+
+            dl_attr_test = dl.attribute(batch, target=target)
+            # dl_attr_test_sum = dl_attr_test.detach().cpu().numpy().sum(0)
+            # dl_attr_test_norm_sum_0 = dl_attr_test_sum / np.linalg.norm(dl_attr_test_sum, ord=1)
+            dl_attr_test_norm_sum_0=dl_attr_test.detach().cpu().numpy().mean(0)
+            attr_list.append(dl_attr_test_norm_sum_0)
         
     dl_attr_test_norm_sum_0 = np.mean(attr_list, axis=0)
     dl_attr_test_norm_sum_17_0 = np.mean(np.reshape(dl_attr_test_norm_sum_0, (-1,20)), axis=1)
@@ -234,14 +251,6 @@ def PLOT_DIAG(dl, X_test, y_test, absolute=False, avg=True):
             c=0
             X = 0
             Y = target
-            # if X == 2:
-            #     X = 1
-            # elif X == 1:
-            #     X = 2
-            # if Y == 2:
-            #     Y = 1
-            # elif Y == 1:
-            #     Y = 2
             ax = axs[Y]
 
             ax.yaxis.tick_right()
@@ -253,16 +262,84 @@ def PLOT_DIAG(dl, X_test, y_test, absolute=False, avg=True):
                 for label in ax.get_yticklabels():
                     label.set_visible(False)
 
-            if c==0:
-                ax.set_title(f"{NUM_TO_NAME[target]} Neuron")
-            # if target==0:
-            #     ax.set_ylabel(f"{NUM_TO_NAME[c]} Samples")
+            ax.set_title(f"{NUM_TO_NAME[target]} Neuron")
 
             if c==3:
                 attr0, attr17_0, abs_attr0, abs_attr17_0 = get_attributions(dl, X_test, y_test, target)
                 num_samp0 = len(X_test)
             else:
                 attr0, attr17_0, abs_attr0, abs_attr17_0 = get_attributions(dl, X_test[y_test[:,target]==1], y_test, target)
+                num_samp0 = len(X_test[y_test[:,c]==1])
+                
+
+            if avg:
+                x_axis_data = list(range(len(attr17_0)))
+                y_values = [0]+abs_attr17_0+[0] if absolute else [0]+attr17_0+[0]
+                ax.bar(
+                    [-1]+x_axis_data+[len(attr17_0)],
+                    y_values,
+                    color= get_sign_color([0]+attr17_0+[0]),
+                    lw=1,
+                    alpha=1,
+                    width=.9,
+                )
+
+                ax.set_xlim(-1,len(attr17_0))
+                ax.set_xticks(x_axis_data)
+                ax.set_xticklabels(LABELS)
+            else:
+                x_axis_data = list(range(len(attr0)))
+                y_values = [0]+abs_attr0+[0] if absolute else [0]+attr0+[0]
+                ax.bar(
+                    [-1]+x_axis_data+[len(attr0)],
+                    y_values,
+                    color= get_sign_color([0]+attr0+[0]),
+                    lw=1,
+                    alpha=1,
+                    width=1,
+                )
+
+                # ax.set_xlim(-1,len(attr0))
+                ax.set_xticks([x for x in x_axis_data if x%20==0])
+                ax.set_xticklabels(LABELS)
+                # ax.tick_params(axis='x', rotation=90)
+
+    plt.tight_layout()
+    fig.subplots_adjust(hspace=0.1, wspace=0)
+    
+    
+def PLOT_DIAG2(dl, X_test, y_test, absolute=False, avg=True):
+    
+    LABELS = ["-"+str(x) for x in range(8,0,-1)]+[str(0)]+[str(x) for x in range(1,9,1)]
+
+    
+    fig, axs = plt.subplots(1,3, figsize=(12, 3), sharey=True, sharex=True)
+    
+    for target in range(3):
+        #for c in range(4):
+
+            c=0
+            X = 0
+            Y = target
+            ax = axs[Y]
+
+            ax.yaxis.tick_right()
+            if Y==2:
+                ax.yaxis.set_tick_params(labelright=True, labelleft=False)
+                pass
+            else:
+
+                for label in ax.get_yticklabels():
+                    label.set_visible(False)
+
+            ax.set_title(f"{NUM_TO_NAME[target]} Neuron")
+
+            if c==3:
+                attr0, attr17_0, abs_attr0, abs_attr17_0 = get_attributions(dl, X_test, y_test, target)
+                num_samp0 = len(X_test)
+            else:
+                x_samples = X_test[y_test[:,target]==1]
+                attr0, attr17_0, abs_attr0, abs_attr17_0 = get_attributions(dl, x_samples, y_test, [target]*len(x_samples))
                 num_samp0 = len(X_test[y_test[:,c]==1])
                 
 
