@@ -143,6 +143,7 @@ def get_attributions(dl, X_test, y_test, target, absolute=False):
             dl_attr_test = dl.attribute(x, target=y)
             # dl_attr_test_sum = dl_attr_test.detach().cpu().numpy().sum(0)
             # dl_attr_test_norm_sum_0 = dl_attr_test_sum / np.linalg.norm(dl_attr_test_sum, ord=1)
+            dl_attr_test = np.absolute(dl_attr_test)
             dl_attr_test_norm_sum_0=dl_attr_test.detach().cpu().numpy().mean(0)
             attr_list.append(dl_attr_test_norm_sum_0)
         
@@ -153,6 +154,7 @@ def get_attributions(dl, X_test, y_test, target, absolute=False):
             dl_attr_test = dl.attribute(batch, target=target)
             # dl_attr_test_sum = dl_attr_test.detach().cpu().numpy().sum(0)
             # dl_attr_test_norm_sum_0 = dl_attr_test_sum / np.linalg.norm(dl_attr_test_sum, ord=1)
+            l_attr_test = torch.abs(dl_attr_test)
             dl_attr_test_norm_sum_0=dl_attr_test.detach().cpu().numpy().mean(0)
             attr_list.append(dl_attr_test_norm_sum_0)
         
@@ -245,6 +247,8 @@ def PLOT_DIAG(dl, X_test, y_test, absolute=False, avg=True):
     
     fig, axs = plt.subplots(1,3, figsize=(12, 3), sharey=True, sharex=True)
     
+    all_attributions = []
+    
     for target in range(3):
         #for c in range(4):
 
@@ -270,8 +274,9 @@ def PLOT_DIAG(dl, X_test, y_test, absolute=False, avg=True):
             else:
                 attr0, attr17_0, abs_attr0, abs_attr17_0 = get_attributions(dl, X_test[y_test[:,target]==1], y_test, target)
                 num_samp0 = len(X_test[y_test[:,c]==1])
-                
 
+            all_attributions.append(abs_attr17_0)
+                
             if avg:
                 x_axis_data = list(range(len(attr17_0)))
                 y_values = [0]+abs_attr17_0+[0] if absolute else [0]+attr17_0+[0]
@@ -306,6 +311,7 @@ def PLOT_DIAG(dl, X_test, y_test, absolute=False, avg=True):
 
     plt.tight_layout()
     fig.subplots_adjust(hspace=0.1, wspace=0)
+    return all_attributions
     
     
 def PLOT_DIAG2(dl, X_test, y_test, absolute=False, avg=True):
